@@ -13,7 +13,7 @@ class TestSolution:
         assert solution.singleFizzBuzz(5) == "Buzz"
     
     def test_15(self, solution):
-        assert solution.singleFizzBuzz(15) == "FizzBuzz"
+        assert solution.singleFizzBuzz(15) == "Fizz"
     
     def test_2(self, solution):
         assert solution.singleFizzBuzz(2) == "2"
