@@ -12,6 +12,7 @@ services:
   
   sonarqube:
     image: sonarqube:lts-community
+    container_name: sonarqube
     ports:
       - "9000:9000"
     environment:
@@ -35,7 +36,7 @@ services:
       pip3 install --no-cache-dir pylint flake8 &&
       mkdir -p /reports &&
       pylint --output-format=json /usr/src/**/*.py > /reports/pylint-report.json || true &&
-      flake8 --format=json /usr/src > /reports/flake8-report.json || true"
+      flake8 --format=json /usr/src > /reports/flake8-report.json || true
 
   sonar-scanner:
     image: sonarsource/sonar-scanner-cli

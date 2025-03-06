@@ -10,20 +10,13 @@ on:
 
 jobs:
   check-githw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     continue-on-error: true
     outputs:
       git_score: ${{ steps.githw.outputs.git_score }}
       student_id: ${{ steps.githw.outputs.student_id }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-            
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -46,44 +39,25 @@ jobs:
           fi
           echo "git_score=$SCORE" >> "$GITHUB_OUTPUT"
           echo "student_id=$STUDENT_ID" >> "$GITHUB_OUTPUT"
-
   check-dockerhw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     continue-on-error: true
     outputs:
       docker_score: ${{ steps.dockerhw.outputs.docker_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-            if [ -n "$(docker ps -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -q)
-            fi
-    
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Install Hadolint (check Dockerfile)
         run: |
           wget -O hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
           chmod +x hadolint
           ./hadolint ./DockerHW/Dockerfile || true
-
       - name: Install Docker Compose
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-
       - name: Check docker-compose.yml
         run: docker-compose -f DockerHW/docker-compose.yml config || true
 
@@ -105,13 +79,8 @@ jobs:
             sleep 1
           done
           echo "healthy=false" >> "$GITHUB_OUTPUT"
-
       - name: Stop Docker containers
-        run: |
-          docker-compose -f -v DockerHW/docker-compose.yml down || true
-          sudo docker volume prune -f
-          sudo docker system prune -a --volumes -f
-          sudo docker image prune -a -f
+        run: docker-compose -f DockerHW/docker-compose.yml down || true
 
       - name: Assign DockerHW score
         id: dockerhw
@@ -121,28 +90,15 @@ jobs:
           else
             echo "docker_score=0" >> "$GITHUB_OUTPUT"
           fi
-
   check-cleancodehw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     continue-on-error: true
     outputs:
       cleancode_score: ${{ steps.cleancode.outputs.cleancode_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-            
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Run calculate_pi.py
         id: run_pi
@@ -161,45 +117,25 @@ jobs:
           SCORE=$(python3 .github/judge/clean_code_HW_judge.py)
           SCORE_NUM=$((SCORE + 0))
           echo "cleancode_score=$SCORE_NUM" >> "$GITHUB_OUTPUT"
-
   check-toolshw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     continue-on-error: true
     outputs:
       tools_score: ${{ steps.toolshw.outputs.tools_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-            if [ -n "$(docker ps -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -q)
-            fi
-    
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Install Docker Compose
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-
       - name: Start SonarQube Service
         working-directory: ${{ github.workspace }}
         run: |
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          docker-compose -p sonarqube_${REPO_NAME} -f ToolsHW/docker-compose.yml up -d sonarqube
-          docker update --memory=2g --memory-swap=2g $(docker ps -aqf "name=sonarqube")
-
+          docker-compose -f ToolsHW/docker-compose.yml up -d sonarqube
+          docker update --memory=2g --memory-swap=2g sonarqube
       - name: Wait for SonarQube to be Ready
         run: |
           echo "Waiting for SonarQube to start..."
@@ -212,14 +148,12 @@ jobs:
             echo "SonarQube status: $STATUS, still waiting..."
             sleep 10
           done
-
       - name: Generate SonarQube Token
         id: generate_token
         run: |
           SONAR_TOKEN=$(curl -s -u admin:admin -X POST "http://localhost:9000/api/user_tokens/generate?name=ci-token" | jq -r '.token')
           echo "Generated SONAR_TOKEN: $SONAR_TOKEN"
           echo "SONAR_TOKEN=$SONAR_TOKEN" >> $GITHUB_ENV
-
       - name: Run SonarScanner for ToolsHW
         run: |
           STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
@@ -228,8 +162,7 @@ jobs:
             exit 1
           fi
           echo "Running SonarScanner..."
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          docker-compose -p sonarqube_${REPO_NAME} -f ToolsHW/docker-compose.yml up sonar-scanner
+          docker-compose -f ToolsHW/docker-compose.yml up sonar-scanner
       - name: Wait for SonarQube to finish analysis
         run: |
           echo "Waiting for SonarQube analysis to complete..."
@@ -244,70 +177,45 @@ jobs:
             echo "SonarQube analysis is still running... waiting 30 seconds"
             sleep 10
           done
-
       - name: Check SonarQube Quality Gate and Ratings
         id: toolshw
         run: |
           SCORE=4
           QUALITY_GATE=$(curl -s -u "$SONAR_TOKEN:" "http://localhost:9000/api/qualitygates/project_status?projectKey=toolshw")
-
           RATINGS=$(curl -s -u "$SONAR_TOKEN:" "http://localhost:9000/api/measures/component?component=toolshw&metricKeys=reliability_rating,security_rating,security_review_rating,sqale_rating")
           
           RELIABILITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="reliability_rating") | .value')
           SECURITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="security_rating") | .value')
           SECURITY_REVIEW=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="security_review_rating") | .value')
           MAINTAINABILITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="sqale_rating") | .value')
-
           echo "$QUALITY_GATE"
           echo "Reliability Rating: $RELIABILITY"
           echo "Security Rating: $SECURITY"
           echo "Security Review Rating: $SECURITY_REVIEW"
           echo "Maintainability Rating: $MAINTAINABILITY"
-
           EXTRA_SCORE=0
           for RATING in "$RELIABILITY" "$SECURITY" "$SECURITY_REVIEW" "$MAINTAINABILITY"; do
             if [[ "$RATING" == "1.0" ]]; then
               EXTRA_SCORE=$((EXTRA_SCORE + 1))
             fi
           done
-          
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          docker-compose -p sonarqube_${REPO_NAME} -f ToolsHW/docker-compose.yml down -v || true
-          sudo docker volume prune -f
-          sudo docker system prune -a --volumes -f
-          sudo docker image prune -a -f
-
           SCORE=$((SCORE + EXTRA_SCORE))
           echo "ToolsHW final score: $SCORE"
           echo "tools_score=$SCORE" >> "$GITHUB_OUTPUT"
-
   check-unittesthw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     continue-on-error: true
     outputs:
       unittests_score: ${{ steps.assign_score.outputs.unittests_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-    
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip install pytest
-
       - name: Run FizzBuzz Basic Tests
         id: fizzbuzz_basic
         continue-on-error: true
@@ -315,7 +223,6 @@ jobs:
           FIZZBUZZ_BASIC_RESULT=$(pytest "UnitTestHW/Fizz Buzz/Basic/test_fizzbuzz.py" --maxfail=10 --disable-warnings -q|| true)
           echo "$FIZZBUZZ_BASIC_RESULT"
           echo "::set-output name=score::$(if [[ "$FIZZBUZZ_BASIC_RESULT" == *"1 failed, 3 passed"* ]]; then echo 2; else echo 0; fi)" 
-
       - name: Run FizzBuzz Class Tests
         id: fizzbuzz_class
         continue-on-error: true
@@ -323,7 +230,6 @@ jobs:
           FIZZBUZZ_CLASS_RESULT=$(pytest "UnitTestHW/Fizz Buzz/Class/test_fizzbuzz.py" --maxfail=10 --disable-warnings -q|| true)
           echo "$FIZZBUZZ_CLASS_RESULT"
           echo "::set-output name=score::$(if [[ "$FIZZBUZZ_CLASS_RESULT" == *"2 failed, 5 passed"* ]]; then echo 2; else echo 0; fi)" 
-
       - name: Run Regular Expression Matching Tests
         id: regex_matching
         continue-on-error: true
@@ -331,7 +237,6 @@ jobs:
           REGEXMATCHING_RESULT=$(pytest "UnitTestHW/Regular Expression Matching/test_solution.py" --maxfail=10 --disable-warnings -q|| true)
           echo "$REGEXMATCHING_RESULT"
           echo "::set-output name=score::$(if [[ "$REGEXMATCHING_RESULT" == *"6 passed, 1 xfailed"* ]]; then echo 4; else echo 0; fi)" 
-
       - name: Assign Unit Test score
         id: assign_score
         run: |
@@ -341,31 +246,21 @@ jobs:
           
           TOTAL=$((FIZZBUZZ_BASIC_SCORE + FIZZBUZZ_CLASS_SCORE + REGEXMATCHING_SCORE))
           echo "unittests_score=$TOTAL" >> "$GITHUB_OUTPUT"
-
   check-commit-message:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     outputs:
       commit_message_score: ${{ steps.calculate_accuracy.outputs.commit_message_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-    
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Get all commit messages
         run: |
-          git config --global --add safe.directory ${{ github.workspace }}
           COMMITS=$(git log --pretty=format:"%s")
           echo "COMMITS<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
       - name: Validate commit messages and calculate accuracy
         id: calculate_accuracy
         shell: bash
@@ -394,9 +289,8 @@ jobs:
           if [[ $ACCURACY -ge 90 ]]; then
             echo "commit_message_score=3" >> "$GITHUB_OUTPUT"
           fi
-
   check-darkmaze-dockerhw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
     continue-on-error: true
     outputs:
@@ -420,25 +314,8 @@ jobs:
             echo "Not yet passed the first part."
             exit 1
           fi
-
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-            if [ -n "$(docker ps -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -q)
-            fi
-
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Install Hadolint (check Dockerfile)
         run: |
@@ -446,12 +323,10 @@ jobs:
           chmod +x hadolint
           ./hadolint DarkMaze/frontend/Dockerfile || true
           ./hadolint DarkMaze/backend/Dockerfile || true
-
       - name: Install Docker Compose
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-
       - name: Check docker-compose.yml
         run: docker-compose -f DarkMaze/docker-compose.yml config || true
 
@@ -475,7 +350,6 @@ jobs:
           done
           echo "healthy=false" >> $GITHUB_ENV
           echo "::set-output name=healthy::false"
-
       - name: Verify backend service on port 8000
         id: healthcheck_backend
         run: |
@@ -490,13 +364,8 @@ jobs:
           done
           echo "healthy=false" >> $GITHUB_ENV
           echo "::set-output name=healthy::false"
-
       - name: Stop Docker containers
-        run: |
-          docker-compose -f DarkMaze/docker-compose.yml down || true
-          sudo docker volume prune -f
-          sudo docker system prune -a --volumes -f
-          sudo docker image prune -a -f
+        run: docker-compose -f DarkMaze/docker-compose.yml down || true
 
       - name: Assign DarkMaze Docker score
         id: DarkMaze-docker
@@ -512,9 +381,8 @@ jobs:
             echo "darkmaze_docker_score=0" >> $GITHUB_ENV
             echo "darkmaze_docker_score=0" >> $GITHUB_OUTPUT
           fi
-
   check-darkmaze-tools:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
     continue-on-error: true
     outputs:
@@ -538,42 +406,22 @@ jobs:
             echo "Not yet passed the first part."
             exit 1
           fi
-
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-            if [ -n "$(docker ps -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -q)
-            fi
-
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Install Docker Compose
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          docker-compose -p sonarqube_${REPO_NAME} up -d sonarqube
-          docker update --memory=4g --memory-swap=4g $(docker ps -aqf "name=sonarqube")
+          docker-compose up -d sonarqube
+          docker update --memory=4g --memory-swap=4g sonarqube
           sleep 30
-          docker exec $(docker ps -aqf "name=sonarqube") --user root bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
-          docker exec $(docker ps -aqf "name=sonarqube") bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
-          docker restart $(docker ps -aqf "name=sonarqube")
-
+          docker exec --user root sonarqube bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
+          docker exec sonarqube bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
+          docker restart sonarqube
       - name: Wait for SonarQube to be Ready
         run: |
           echo "Waiting for SonarQube to start..."
@@ -587,14 +435,12 @@ jobs:
           done
           echo "SonarQube failed to start properly"
           exit 1
-
       - name: Generate SonarQube Token
         id: generate_token_darkmaze
         run: |
           SONAR_TOKEN=$(curl -s -u admin:admin -X POST "http://localhost:9000/api/user_tokens/generate?name=ci-token-darkmaze" | jq -r '.token')
           echo "Generated SONAR_TOKEN: $SONAR_TOKEN"
           echo "SONAR_TOKEN=$SONAR_TOKEN" >> $GITHUB_ENV
-
       - name: Run SonarScanner for DarkMaze
         working-directory: DarkMaze/backend
         run: |
@@ -606,33 +452,27 @@ jobs:
             pylint --output-format=json **/*.py > reports/pylint-report.json || true &&
             flake8 --format=json > reports/flake8-report.json || true
           "
-
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          docker-compose -p sonarqube_${REPO_NAME} up -d sonar-scanner
+          docker-compose up -d sonar-scanner
           
           STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
           if [[ "$STATUS" != "UP" ]]; then
             echo "SonarQube is not ready, exiting..."
             exit 1
           fi
-
           export PYLINT_REPORT=$(cat $PWD/reports/pylint-report.json)
           export FLAKE8_REPORT=$(cat $PWD/reports/flake8-report.json)
           
           echo "Running SonarScanner for DarkMaze Backend..."
-          docker-compose -p sonarqube_${REPO_NAME} up sonar-scanner
-
+          docker-compose up sonar-scanner
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
-          docker logs $(docker ps -aqf "name=sonarqube") --tail 50
+          docker logs sonarqube --tail 50
           echo "------------------------------------------"
-
       - name: Ensure StrictQualityGate Exists
         run: |
           curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/create?name=StrictQualityGate" || true
           curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/set_default?name=StrictQualityGate" || true
           curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/select?project=DarkMaze&gateName=StrictQualityGate" || true
-
       - name: Wait for SonarQube Analysis to Complete
         run: |
           echo "Waiting for SonarQube analysis to complete..."
@@ -649,7 +489,6 @@ jobs:
           done
           echo "SonarQube analysis did not finish in time."
           exit 1
-
       - name: Check SonarQube Quality Gate and Ratings for DarkMaze Tools
         id: darkmaze_tools_check
         run: |
@@ -703,13 +542,10 @@ jobs:
       - name: Stop DarkMaze Backend Containers
         working-directory: DarkMaze/backend
         run: |
-          docker-compose down -v
-          sudo docker volume prune -f
-          sudo docker system prune -a --volumes -f
-          sudo docker image prune -a -f
+          docker-compose down
         
   check-darkmaze-testinghw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
     continue-on-error: true
     outputs:
@@ -734,27 +570,13 @@ jobs:
             echo "Not yet passed the first part."
             exit 1
           fi
-
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip install pytest pytest-asyncio httpx fastapi numpy uvicorn
-
       - name: Run game over code
         id: game_over
         continue-on-error: true
@@ -772,7 +594,6 @@ jobs:
           CONST_GAME_OVER_RESULT=$(pytest "DarkMaze/backend/tests/test_game_over.py" --maxfail=10 --disable-warnings -q|| true)
           echo "$CONST_GAME_OVER_RESULT"
           echo "::set-output name=score::$(if [[ "$OK_GAME_OVER_RESULT" != *"failed"* && "$ONLY_WIN_GAME_OVER_RESULT" == *"failed"* && "$CONST_GAME_OVER_RESULT" == *"failed"* ]]; then echo 6; else echo 0; fi)"
-
       - name: Run solve maze with no backend
         id: no_backend
         continue-on-error: true
@@ -780,7 +601,6 @@ jobs:
           NO_BACKEND_RESULT=$(pytest "DarkMaze/backend/tests/test_solve_maze.py" --maxfail=10 --disable-warnings -q|| true)
           echo "$NO_BACKEND_RESULT"
           echo "::set-output name=score::$(if [[ "$NO_BACKEND_RESULT" == *"2 failed"* ]]; then echo 4; else echo 0; fi)"
-
       - name: Run solve maze with mock backend
         id: mock_backend
         continue-on-error: true
@@ -793,13 +613,11 @@ jobs:
           echo "$MOCK_BACKEND_RESULT"
           echo "::set-output name=score::$(if [[ "$MOCK_BACKEND_RESULT" == *"1 failed, 1 passed"* ]]; then echo 4; else echo 0; fi)"
           pkill -f "python mock_backend.py"
-
       - name: Run true backend
         run: |
           cd DarkMaze/backend
           nohup python -m src.main &
           sleep 3
-
       - name: Run solve maze
         id: solve_maze
         continue-on-error: true
@@ -807,7 +625,6 @@ jobs:
           SOLVE_MAZE_RESULT=$(pytest "DarkMaze/backend/tests/test_solve_maze.py" --maxfail=10 --disable-warnings -q|| true)
           echo "$SOLVE_MAZE_RESULT"
           echo "::set-output name=score::$(if [[ "$SOLVE_MAZE_RESULT" == *"2 passed"* ]]; then echo 4; else echo 0; fi)"
-
       - name: Stop backend
         run: pkill -f "python -m src.main"
 
@@ -821,19 +638,11 @@ jobs:
           
           TOTAL=$((GAME_OVER_SCORE + NO_BACKEND_SCORE + MOCK_BACKEND_SCORE + SOLVE_MAZE_SCORE))
           echo "darkmaze_testing_score=$TOTAL" >> "$GITHUB_OUTPUT"
-
   calculate-score:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-toolshw, check-unittesthw, check-commit-message, check-darkmaze-testinghw, check-darkmaze-dockerhw, check-darkmaze-tools]
     permissions: write-all
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-    
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -860,7 +669,6 @@ jobs:
           : "${DARKMAZE_TOOLS_SCORE:=0}"
           : "${COMMIT_MESSAGE_SCORE:=0}"
           : "${STUDENT_ID:=Unknown}"
-
           TOTAL=$((GIT_SCORE + DARKMAZE_TESTING_SCORE + DARKMAZE_DOCKER_SCORE + DOCKER_SCORE + CLEAN_CODE_SCORE + UNITTESTS_SCORE + TOOLS_SCORE + DARKMAZE_TOOLS_SCORE + COMMIT_MESSAGE_SCORE))
           echo "Final Score: $TOTAL"
           echo "Student ID: $STUDENT_ID"
@@ -961,7 +769,6 @@ jobs:
               core.notice(summary, {
                 title: "Autograding report",
               })
-
       - name: Upload Autograding JSON
         uses: actions/upload-artifact@v4
         with:
