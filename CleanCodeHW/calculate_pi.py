@@ -17,6 +17,6 @@ for _ in range(NUM_POINTS):
         inside_circle += POINT_COUNT_INCREMENT
 
 # Estimate pi based on the number of points inside the circle
-pi_neapple = (inside_circle / NUM_POINTS) * AREA_FACTOR
+estimated_pi = (inside_circle / NUM_POINTS) * AREA_FACTOR
 
-print(f"Estimated value of pi is: {pi_neapple}")
+print(f"Estimated value of pi is: {estimated_pi}")
