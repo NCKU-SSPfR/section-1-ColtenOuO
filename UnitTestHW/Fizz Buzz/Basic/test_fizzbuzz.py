@@ -7,6 +7,6 @@ def test_5():
     assert fizzBuzz(5) == "Buzz"
 
 def test_15():
-    assert fizzBuzz(15) == "Buzz"
+    assert fizzBuzz(15) == "Fizz"
 def test_2():
     assert fizzBuzz(2) == "2"

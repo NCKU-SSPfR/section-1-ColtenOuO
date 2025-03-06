@@ -8,3 +8,5 @@ def fizzBuzz(n: int) -> str:
     elif n%1==0:
         return f"{str(n)}"
     return "OwO"
+
+print(fizzBuzz(15))
