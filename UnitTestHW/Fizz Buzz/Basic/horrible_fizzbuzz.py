@@ -2,7 +2,7 @@ def fizzBuzz(n: int) -> str:
     if n%3==0:
         return "Fizz"
     if n%5==0:
-        return "Buzz"
+        return "Buzz" 
     if n%15==0:
         return "Fizz" + "Buzz"
     elif n%1==0:
