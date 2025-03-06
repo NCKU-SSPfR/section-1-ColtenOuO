@@ -196,7 +196,8 @@ jobs:
       - name: Start SonarQube Service
         working-directory: ${{ github.workspace }}
         run: |
-          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up -d sonarqube
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
+          docker-compose -p sonarqube_${REPO_NAME} -f ToolsHW/docker-compose.yml up -d sonarqube
           docker update --memory=2g --memory-swap=2g $(docker ps -aqf "name=sonarqube")
 
       - name: Wait for SonarQube to be Ready
@@ -227,7 +228,8 @@ jobs:
             exit 1
           fi
           echo "Running SonarScanner..."
-          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up sonar-scanner
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
+          docker-compose -p sonarqube_${REPO_NAME} -f ToolsHW/docker-compose.yml up sonar-scanner
       - name: Wait for SonarQube to finish analysis
         run: |
           echo "Waiting for SonarQube analysis to complete..."
@@ -269,7 +271,8 @@ jobs:
             fi
           done
           
-          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml down -v || true
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
+          docker-compose -p sonarqube_${REPO_NAME} -f ToolsHW/docker-compose.yml down -v || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
           sudo docker image prune -a -f
@@ -563,7 +566,8 @@ jobs:
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
-          docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonarqube
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
+          docker-compose -p sonarqube_${REPO_NAME} up -d sonarqube
           docker update --memory=4g --memory-swap=4g $(docker ps -aqf "name=sonarqube")
           sleep 30
           docker exec $(docker ps -aqf "name=sonarqube") --user root bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
@@ -602,7 +606,9 @@ jobs:
             pylint --output-format=json **/*.py > reports/pylint-report.json || true &&
             flake8 --format=json > reports/flake8-report.json || true
           "
-          docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonar-scanner
+
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
+          docker-compose -p sonarqube_${REPO_NAME} up -d sonar-scanner
           
           STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
           if [[ "$STATUS" != "UP" ]]; then
@@ -614,7 +620,7 @@ jobs:
           export FLAKE8_REPORT=$(cat $PWD/reports/flake8-report.json)
           
           echo "Running SonarScanner for DarkMaze Backend..."
-          docker-compose -p sonarqube_${{ github.event.repository.name }} up sonar-scanner
+          docker-compose -p sonarqube_${REPO_NAME} up sonar-scanner
 
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
