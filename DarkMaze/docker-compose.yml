@@ -68,9 +68,13 @@ services:
     # 2. Map the files in the frontend folder to the /app folder inside the container.  
     # 3. Map port 8088 in the container to port 8088 on the host machine.
     build: ./frontend
+    volumes:
+      - ./frontend:/app
     ports:
       - "8088:8088"
     command: uvicorn src.main:app --host "0.0.0.0" --port 8088 --reload
+    networks:
+      - sonar-network
 
   backend:
     # TODO:
@@ -78,9 +82,16 @@ services:
     # 2. Map the files in the backend folder to the /app folder inside the container.  
     # 3. Map port 8000 in the container to port 8000 on the host machine.
     build: ./backend
+    volumes:
+      - ./backend:/app
     ports:
       - "8000:8000"
     command: uvicorn src.main:app --host "0.0.0.0" --port 8000 --reload
+    networks:
+      - sonar-network
+
+networks:
+  sonar-network:
 
 networks:
   sonar-network:
