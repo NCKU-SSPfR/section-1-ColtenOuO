@@ -61,14 +61,6 @@ def hit_obstacle(position, maze_level_name):
         # Position is out of bounds
         return True
 
-def hit_obstacle_again_and_again():
-    while True:
-        hit_obstacle(hahahahaha, 995)
-        while True:
-            hit_obstacle(hahahahaha, 995)
-            while True:
-                hit_obstacle_again_and_again()
-    
 def game_over(health):
     if health == 0 or health == 666:
         return True
