@@ -17,6 +17,6 @@ for _ in range(NUM_POINTS):
         point_inside_circle  += POINT_COUNT_INCREMENT
 
 # Estimate pi based on the number of points inside the circle
-pi_result = (point_inside_circle  / NUM_POINTS) * AREA_FACTOR
+pi_estimated = (point_inside_circle  / NUM_POINTS) * AREA_FACTOR
 
-print(f"Estimated value of pi is: {pi_result}")
+print(f"Estimated value of pi is: {pi_estimated}")
