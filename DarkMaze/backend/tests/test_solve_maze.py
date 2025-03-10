@@ -19,7 +19,7 @@ async def login_request():
 
 async def reset_request():
     """Reset Game state"""
-
+    global game_state
     async with httpx.AsyncClient() as client:
         response = await client.get(RESET_URL)
 
