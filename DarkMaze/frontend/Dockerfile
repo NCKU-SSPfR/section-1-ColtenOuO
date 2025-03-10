@@ -4,11 +4,9 @@ WORKDIR /app
 
 COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r /app/requirements.txt
-COPY --chown=appuser:appuser ./src/ /app/src 
 
-RUN useradd --create-home appuser
-RUN chown -R appuser:appuser /app
-USER appuser
+COPY . .
+EXPOSE 8088
 
 
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8088", "--reload"]
